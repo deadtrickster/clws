@@ -305,3 +305,13 @@ RESOURCE-CLIENT-DISCONNECTED and RESOURCE-RECEIVED-FRAME as appropriate."
   "Terminates a RUN-RESOURCE-LISTENER from another thread."
   (mailbox-send-message (resource-read-queue resource)
                         '(nil :close-resource)))
+
+(defun kill-all-global-resource-listeners ()
+  "Terminates listeners for ALL global resources"
+  (with-hash-table-iterator (next *resources*)
+    (loop
+          (multiple-value-bind (more? name resource) (next)
+            (declare (ignore name))
+            (unless more?
+              (return))
+            (kill-resource-listener (first resource))))))

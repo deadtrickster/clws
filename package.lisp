@@ -32,6 +32,7 @@
    #:run-global-resources
    #:run-resource-listener-thread
    #:kill-resource-listener
+   #:kill-all-global-resource-listeners
 
    #:resource-accept-connection
    #:send-custom-message-to-resource
