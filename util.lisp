@@ -1,4 +1,4 @@
-(in-package #:ws)
+(in-package #:clws)
 
 (defun string-to-shareable-octets (string &key (encoding babel:*default-character-encoding*)
                                             (start 0) end (use-bom :default)

@@ -1,4 +1,4 @@
-(in-package #:ws)
+(in-package #:clws)
 
 (defparameter *max-write-backlog* 16
   "Max number of queued write frames before dropping a client.")

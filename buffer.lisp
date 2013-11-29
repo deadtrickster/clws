@@ -1,4 +1,4 @@
-(in-package #:ws)
+(in-package #:clws)
 
 ;;; chunks stored by chunk-buffer class
 (defclass buffer-chunk ()

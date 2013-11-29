@@ -1,4 +1,4 @@
-(in-package #:ws)
+(in-package #:clws)
 
 ;;; (todo? hixie75, chrome4/safari 5.0.0)
 

@@ -1,4 +1,4 @@
-(in-package #:ws)
+(in-package #:clws)
 
 (defparameter *server-busy-message* (string-to-shareable-octets
                                      "HTTP/1.1 503 service unavailable
@@ -7,10 +7,15 @@
                                      :encoding :utf-8))
 
 (defclass server ()
-  ((event-base :initform nil :accessor server-event-base :initarg :event-base)
+  ((name :initform nil :accessor server-name :initarg :name)
+   (event-base :initform nil :accessor server-event-base :initarg :event-base)
    (clients :initform (make-hash-table) :reader server-clients
             :documentation "Hash of client objects to them
-            selves (just used as a set for now)."))
+            selves (just used as a set for now).")
+   (resources :initform (make-hash-table :test 'equal) :reader server-resources
+              :documentation "Collection of resource which handled by this server")
+   (execute-in-server-lambda :initform nil :reader execute-in-server-lambda
+                             :documentation "lambda grabbed from flet in run-server -> execute-in-server-thread"))
   (:documentation "A WebSockets server listens on a socket for
 connections and has a bunch of client instances that it controls."))
 
@@ -29,33 +34,33 @@ connections and has a bunch of client instances that it controls."))
 
 (defun make-listener-handler (server socket server-hook)
   (lambda (fd event exception)
-    (declare (ignore fd event exception))
-    (let* ((client-socket (accept-connection socket :wait t))
-           (client (when client-socket
-                     (make-instance 'client
-                                    :server server
-                                    :%host (remote-host client-socket)
-                                    :host (address-to-string
-                                           (remote-host client-socket))
-                                    :port (remote-port client-socket)
-                                    :server-hook server-hook
-                                    :socket client-socket))))
-      (when client
-        (lg "got client connection from ~s ~s~%" (client-host client)
-            (client-port client))
-        (lg "client count = ~s/~s~%" (server-client-count server) *max-clients*)
-        ;; fixme: probably shouldn't do this if we are dropping the connection
-        ;; due to too many connections?
-        (setf (gethash client (server-clients server)) client)
-        (cond
-          ((and *max-clients* (> (server-client-count server) *max-clients*))
-           ;; too many clients, send a server busy response and close connection
-           (client-disconnect client :read t)
-           (client-enqueue-write client *server-busy-message*)
-           (client-enqueue-write client :close))
-          (t
-           ;; otherwise handle normally
-           (add-reader-to-client client)))))))
+     (declare (ignore fd event exception))
+     (let* ((client-socket (accept-connection socket :wait t))
+            (client (when client-socket
+                      (make-instance 'client
+                                     :server server
+                                     :%host (remote-host client-socket)
+                                     :host (address-to-string
+                                            (remote-host client-socket))
+                                     :port (remote-port client-socket)
+                                     :server-hook server-hook
+                                     :socket client-socket))))
+       (when client
+         (lg "got client connection from ~s ~s~%" (client-host client)
+             (client-port client))
+         (lg "client count = ~s/~s~%" (server-client-count server) *max-clients*)
+         ;; fixme: probably shouldn't do this if we are dropping the connection
+         ;; due to too many connections?
+         (setf (gethash client (server-clients server)) client)
+         (cond
+           ((and *max-clients* (> (server-client-count server) *max-clients*))
+            ;; too many clients, send a server busy response and close connection
+            (client-disconnect client :read t)
+            (client-enqueue-write client *server-busy-message*)
+            (client-enqueue-write client :close))
+           (t
+            ;; otherwise handle normally
+            (add-reader-to-client client)))))))
 
 (defun run-server (port &key (addr +ipv4-unspecified+))
   "Starts a server on the given PORT and blocks until the server is
@@ -91,7 +96,7 @@ are thread-safe.
                (if *debug-on-server-errors*
                    (iolib:send-to control-socket-2 wake-up)
                    (ignore-errors
-                     (iolib:send-to control-socket-2 wake-up)))))
+                    (iolib:send-to control-socket-2 wake-up)))))
         (unwind-protect
              (iolib:with-open-socket (socket :connect :passive
                                              :address-family :internet
@@ -107,13 +112,13 @@ are thread-safe.
                (iolib:set-io-handler event-base
                                      (socket-os-fd control-socket-1)
                                      :read (lambda (fd e ex)
-                                             (declare (ignorable fd e ex))
-                                             (receive-from control-socket-1
-                                                           :buffer temp
-                                                           :start 0 :end 16)
-                                             (loop for m = (dequeue control-mailbox)
-                                                   while m
-                                                   do (funcall m))))
+                                              (declare (ignorable fd e ex))
+                                              (receive-from control-socket-1
+                                                            :buffer temp
+                                                            :start 0 :end 16)
+                                              (loop for m = (dequeue control-mailbox)
+                                                    while m
+                                                    do (funcall m))))
                (iolib:set-io-handler event-base
                                      (iolib:socket-os-fd socket)
                                      :read (let ((true-handler (make-listener-handler
@@ -121,8 +126,8 @@ are thread-safe.
                                                                 socket
                                                                 #'execute-in-server-thread)))
                                              (lambda (&rest rest)
-                                               (lg "There is something to read on fd ~A~%" (first rest))
-                                               (apply true-handler rest))))
+                                                (lg "There is something to read on fd ~A~%" (first rest))
+                                                (apply true-handler rest))))
                (handler-case
                    (event-dispatch event-base)
                  ;; ... handle errors
@@ -130,8 +135,110 @@ are thread-safe.
                )
           (loop :for v :in (server-list-clients server)
                 :do
-                (lg "cleanup up dropping client ~s~%" v)
-                (client-enqueue-read v (list v :dropped))
-                (client-disconnect v :abort t))
+                   (lg "cleanup up dropping client ~s~%" v)
+                   (client-enqueue-read v (list v :dropped))
+                   (client-disconnect v :abort t))
           (close control-socket-1)
           (close control-socket-2))))))
+
+
+(defun run-server-thread (server-name port &key (addr +ipv4-unspecified+) resources)
+  "Starts a server on the given PORT and blocks until the server is
+closed.  Intended to run in a dedicated thread,
+dubbed the Server Thread.
+
+Establishes a socket listener in the current thread.  This thread
+handles all incoming connections, and because of this fact is able to
+handle far more concurrent connections than it would be able to if it
+spawned off a new thread for each connection.  As such, most of the
+processing is done on the Server Thread, though most user functions
+are thread-safe.
+
+Returns execute-in-server-thread lambda
+
+"
+  (let* ((event-base (make-instance 'iolib:event-base))
+         (server (make-instance 'server
+                                :name (format nil "WS Server \"~a\", port: ~a" server-name port)
+                                :event-base event-base))
+         (temp (make-array-ubyte8 16))
+         (control-mailbox (make-queue :name "server-control"))
+         (wake-up (make-array-ubyte8 1 :initial-element 0)))
+    ;; To be clear, there are three sockets used for a server.  The
+    ;; main one is the WebSockets server (socket).  There is also a
+    ;; pair of connected sockets (control-socket-1 control-socket-2)
+    ;; used merely as a means of making the server thread execute a
+    ;; lambda from a different thread.
+    (multiple-value-bind (control-socket-1 control-socket-2)
+        (make-socket-pair)
+      (flet ((execute-in-server-thread (thunk)
+               ;; hook for waking up the server and telling it to run
+               ;; some code, for things like enabling writers when
+               ;; there is new data to write
+               (enqueue thunk control-mailbox)
+               (if *debug-on-server-errors*
+                   (iolib:send-to control-socket-2 wake-up)
+                   (ignore-errors
+                    (iolib:send-to control-socket-2 wake-up)))))
+        (setf (slot-value server 'execute-in-server-lambda) #'execute-in-server-thread)
+        (if resources
+            (setf (slot-value server 'resources) resources))
+        (bt:make-thread
+         (lambda ()
+            (unwind-protect
+                 (iolib:with-open-socket (socket :connect :passive
+                                                 :address-family :internet
+                                                 :type :stream
+                                                 :ipv6 nil
+                                                 ;;:external-format '(unsigned-byte 8)
+                                                 ;; bind and listen as well
+                                                 :local-host addr
+                                                 :local-port port
+                                                 :backlog 5
+                                                 :reuse-address t
+                                                 #++ :no-delay)
+                   (iolib:set-io-handler event-base
+                                         (socket-os-fd control-socket-1)
+                                         :read (lambda (fd e ex)
+                                                  (declare (ignorable fd e ex))
+                                                  (receive-from control-socket-1
+                                                                :buffer temp
+                                                                :start 0 :end 16)
+                                                  (loop for m = (dequeue control-mailbox)
+                                                        while m
+                                                        do (funcall m))))
+                   (iolib:set-io-handler event-base
+                                         (iolib:socket-os-fd socket)
+                                         :read (let ((true-handler (make-listener-handler
+                                                                    server
+                                                                    socket
+                                                                    #'execute-in-server-thread)))
+                                                 (lambda (&rest rest)
+                                                    (lg "There is something to read on fd ~A~%" (first rest))
+                                                    (apply true-handler rest))))
+                   (handler-case
+                       (event-dispatch event-base)
+                     ;; ... handle errors
+                     )
+                   )
+              (lg "~a terminates now..." (server-name server))
+              (loop :for v :in (server-list-clients server)
+                    :do
+                       (lg "cleanup up dropping client ~s~%" v)
+                       (client-enqueue-read v (list v :dropped))
+                       (client-disconnect v :abort t))
+              (close control-socket-1)
+              (close control-socket-2)
+              (close event-base)))
+         :name (server-name server))
+        server
+        ))))
+
+
+(defun stop-server (server)
+  (lg "Killing resources~%")
+  (loop for resource in (alexandria:hash-table-values (server-resources server)) do
+           (kill-resource-listener (first resource)))
+  (lg "Stopping Server Thread~%")
+  (funcall (execute-in-server-lambda server) (lambda ()
+                                                (sb-thread:abort-thread))))

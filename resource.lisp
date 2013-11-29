@@ -1,4 +1,4 @@
-(in-package #:ws)
+(in-package #:clws)
 
 ;;; resource stuff
 ;;;
@@ -27,21 +27,39 @@ resource."
   (setf (gethash name *resources*)
         (list resource-handler origin-validation-fn)))
 
+(defun register-server-resource (server name resource-handler origin-validation-fn)
+  "Registers a resource instance local for SERVER  where NAME is a path string like
+'/swank', resource-handler is an instance of WS-RESOURCE, and
+ORIGIN-VALIDATION-FN is a function that takes an origin string as
+input and returns T if that origin is allowed to access this
+resource."
+  (setf (gethash name (server-resources server))
+        (list resource-handler origin-validation-fn)))
+
 (defun find-global-resource (name)
   "Returns the resource registered via REGISTER-GLOBAL-RESOURCE with name NAME."
   (first (gethash name *resources*)))
+
+(defun find-server-resource (server name)
+  "Returns the resource registered via REGISTER-SERVER-RESOURCE with name NAME."
+  (first (gethash name (server-resources server))))
 
 (defun unregister-global-resource (name)
   "Removes the resource registered via REGISTER-GLOBAL-RESOURCE with name NAME."
   (remhash name *resources*))
 
+(defun unregister-server-resource (server name)
+  "Removes the resource registered via REGISTER-SERVER-RESOURCE with name NAME."
+  (remhash name (server-resources server)))
+
 (defun valid-resource-p (server resource)
   "Returns non-nil if there is a handler registered for the resource
 of the given name (a string)."
   (declare (type string resource)
-           (ignore server))
+           (type server server))
   (when resource
-    (gethash resource *resources*)))
+    (or (gethash resource (server-resources server))
+        (gethash resource *resources*))))
 
 ;; functions for checking origins...
 (defun any-origin (o) (declare (ignore o)) t)
@@ -67,7 +85,8 @@ the origins passed as arguments exactly."
   between the server thread and resource thread."))
 
 (defclass ws-resource ()
-  ((read-queue :initform (make-mailbox) :reader resource-read-queue))
+  ((read-queue :initform (make-mailbox) :reader resource-read-queue)
+   (listener-thread :initform nil :accessor resource-listener-thread))
   (:documentation "A server may have many resources, each associated
   with a particular resource path (like /echo or /chat).  An single
   instance of a resource handles all requests on the server for that
@@ -248,6 +267,39 @@ RESOURCE-CLIENT-DISCONNECTED and RESOURCE-RECEIVED-FRAME as appropriate."
                   (resource-received-binary resource client (cadr data)))))
             (t
              (error "got unknown data in run-resource-listener?"))))))
+
+(defun maybe-run-resource-listener-thread (name resource)
+  "Runs resource listener in new thread if resource does not have one (or it is not alive), else does nothing"
+  (when (or (not (resource-listener-thread resource))
+            (not (bt:thread-alive-p (resource-listener-thread resource))))
+    (run-resource-listener-thread name resource)))
+
+(defun run-resource-listener-thread (name resource)
+  "Runs resource listener in new thread"
+  (bt:make-thread
+   (lambda ()
+      (setf (resource-listener-thread resource) (bt:current-thread))
+      (clws:run-resource-listener resource))
+   :name (format nil "Resource listener for ~a" name)))
+
+(defun run-server-resources (server)
+  "Runs listeners for all resources associated with the SERVER"
+  (with-hash-table-iterator (next (server-resources server))
+    (loop
+      (multiple-value-bind (more? name resource) (next)
+        (unless more?
+          (return))
+        (maybe-run-resource-listener-thread (format nil "~a, resource: ~a"  (server-name server) name) (first resource))))))
+
+(defun run-global-resources ()
+  "Runs listeners for all global resourcese"
+  (with-hash-table-iterator (next *resources*)
+    (loop
+      (multiple-value-bind (more? name resource) (next)
+        (unless more?
+          (return))
+        (maybe-run-resource-listener-thread (format nil "~a, resource: ~a"  "Global Resource"  name) (first resource))))))
+
 
 (defun kill-resource-listener (resource)
   "Terminates a RUN-RESOURCE-LISTENER from another thread."

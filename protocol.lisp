@@ -1,4 +1,4 @@
-(in-package #:ws)
+(in-package #:clws)
 
 
 ;; predicates for determining if callback should be called or not

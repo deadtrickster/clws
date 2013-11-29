@@ -1,4 +1,4 @@
-(in-package #:ws)
+(in-package #:clws)
 
 (defparameter *supported-protocol-versions* '())
 (defparameter *protocol-header-parsers* (make-hash-table :test #'equalp))

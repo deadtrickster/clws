@@ -1,4 +1,4 @@
-(in-package #:ws)
+(in-package #:clws)
 
 ;; draft 7/protocol 7 support, used by firefox 6
 ;; (also 8 (used by chrome 14/15, ff7) and 13, since they are pretty

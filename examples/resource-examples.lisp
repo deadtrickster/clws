@@ -1,4 +1,4 @@
-(in-package #:ws)
+(in-package #:clws)
 
 ;;;; Echo server
 ;;;; -----------
@@ -9,7 +9,7 @@
 (register-global-resource
  "/echo"
  (make-instance 'echo-resource)
- (ws::origin-prefix "http://127.0.0.1" "http://localhost" "null"))
+ (clws::origin-prefix "http://127.0.0.1" "http://localhost" "null"))
 
 #++
 (defmethod resource-accept-connection ((res echo-resource) resource-name headers client)
@@ -39,17 +39,17 @@
 #++
 (bordeaux-threads:make-thread
           (lambda ()
-            (ws:run-server 12345))
+            (clws:run-server 12345))
           :name "websockets server")
 
 #++
 (bordeaux-threads:make-thread
  (lambda ()
-   (ws:run-resource-listener (ws:find-global-resource "/echo")))
+   (clws:run-resource-listener (clws:find-global-resource "/echo")))
  :name "resource listener for /echo")
 
 #++
-(kill-resource-listener (ws:find-global-resource "/echo"))
+(kill-resource-listener (clws:find-global-resource "/echo"))
 
 
 ;;; for autobahn test suite
@@ -57,16 +57,16 @@
 (register-global-resource
  "/"
  (make-instance 'echo-resource)
- #'ws::any-origin)
+ #'clws::any-origin)
 
 #++
 (bordeaux-threads:make-thread
  (lambda ()
-   (ws:run-resource-listener (ws:find-global-resource "/")))
+   (clws:run-resource-listener (clws:find-global-resource "/")))
  :name "resource listener for /")
 
 #++
-(kill-resource-listener (ws:find-global-resource "/"))
+(kill-resource-listener (clws:find-global-resource "/"))
 
 
 ;;;; Chat server
@@ -79,9 +79,9 @@
 (register-global-resource
  "/chat"
  (make-instance 'chat-server)
- #'ws::any-origin
+ #'clws::any-origin
  #++
- (ws::origin-prefix "http://127.0.0.1" "http://localhost"))
+ (clws::origin-prefix "http://127.0.0.1" "http://localhost"))
 
 (defmethod resource-client-connected ((res chat-server) client)
   (format t "got connection on chat server from ~s : ~s~%" (client-host client) (client-port client))
@@ -132,5 +132,5 @@
 #++
 (bordeaux-threads:make-thread
  (lambda ()
-   (ws:run-resource-listener (ws:find-global-resource "/chat")))
+   (clws:run-resource-listener (clws:find-global-resource "/chat")))
  :name "chat resource listener for /chat")

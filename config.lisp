@@ -1,4 +1,4 @@
-(in-package #:ws)
+(in-package #:clws)
 
 ;;; some of these should probably be per resource handler rather than global?
 

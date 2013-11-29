@@ -1,5 +1,4 @@
 (defpackage #:clws
-  (:nicknames #:ws)
   (:use #:cl #:iolib)
   (:export
    ;; client
@@ -21,11 +20,17 @@
    #:register-global-resource
    #:find-global-resource
    #:unregister-global-resource
+   #:register-server-resource
+   #:find-server-resource
+   #:unregister-server-resource
    #:resource-received-text
    #:resource-received-binary
    #:resource-client-connected
    #:resource-client-disconnected
    #:run-resource-listener
+   #:run-server-resources
+   #:run-global-resources
+   #:run-resource-listener-thread
    #:kill-resource-listener
 
    #:resource-accept-connection
@@ -34,6 +39,7 @@
    #:call-on-resource-thread
    ;; server
    #:run-server
+   #:stop-server
    #:*debug-on-server-errors*
    #:*debug-on-resource-errors*
    #:*protocol-76/00-support*
