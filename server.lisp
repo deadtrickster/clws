@@ -237,8 +237,7 @@ Returns execute-in-server-thread lambda
 
 (defun stop-server (server)
   (lg "Killing resources~%")
-  (loop for resource in (alexandria:hash-table-values (server-resources server)) do
-           (kill-resource-listener (first resource)))
+  (kill-all-server-resource-listeners server)
   (lg "Stopping Server Thread~%")
   (funcall (execute-in-server-lambda server) (lambda ()
                                                 (sb-thread:abort-thread))))

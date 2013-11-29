@@ -315,3 +315,8 @@ RESOURCE-CLIENT-DISCONNECTED and RESOURCE-RECEIVED-FRAME as appropriate."
             (unless more?
               (return))
             (kill-resource-listener (first resource))))))
+
+(defun kill-all-server-resource-listeners (server)
+  "Terminates listener for resources associated with SERVER"
+  (loop for resource in (alexandria:hash-table-values (server-resources server)) do
+           (kill-resource-listener (first resource))))

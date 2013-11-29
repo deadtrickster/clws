@@ -33,6 +33,7 @@
    #:run-resource-listener-thread
    #:kill-resource-listener
    #:kill-all-global-resource-listeners
+   #:kill-all-server-resource-listeners
 
    #:resource-accept-connection
    #:send-custom-message-to-resource
@@ -40,6 +41,7 @@
    #:call-on-resource-thread
    ;; server
    #:run-server
+   #:run-server-thread
    #:stop-server
    #:*debug-on-server-errors*
    #:*debug-on-resource-errors*
