@@ -32,7 +32,7 @@ connections and has a bunch of client instances that it controls."))
 (defmethod server-client-count ((server server))
   (hash-table-count (server-clients server)))
 
-(defun make-listener-handler (server socket server-hook)
+(defun make-listener-handler (server socket)
   (lambda (fd event exception)
      (declare (ignore fd event exception))
      (let* ((client-socket (accept-connection socket :wait t))
@@ -43,7 +43,7 @@ connections and has a bunch of client instances that it controls."))
                                      :host (address-to-string
                                             (remote-host client-socket))
                                      :port (remote-port client-socket)
-                                     :server-hook server-hook
+                                     :server-hook (slot-value server 'execute-in-server-lambda)
                                      :socket client-socket))))
        (when client
          (lg "got client connection from ~s ~s~%" (client-host client)
@@ -62,7 +62,49 @@ connections and has a bunch of client instances that it controls."))
             ;; otherwise handle normally
             (add-reader-to-client client)))))))
 
-(defun run-server (port &key (addr +ipv4-unspecified+))
+(defun setup-server (server addr port event-base control-fd control-mailbox)
+  (unwind-protect
+       (iolib:with-open-socket (socket :connect :passive
+                                       :address-family :internet
+                                       :type :stream
+                                       :ipv6 nil
+                                       ;;:external-format '(unsigned-byte 8)
+                                       ;; bind and listen as well
+                                       :local-host addr
+                                       :local-port port
+                                       :backlog 5
+                                       :reuse-address t
+                                       #++ :no-delay)
+         (iolib:set-io-handler event-base
+                               control-fd
+                               :read (lambda (fd e ex)
+                                        (declare (ignorable fd e ex))
+                                        (lg "Got lambda to execute on server thread ~a" (eventfd.read control-fd))
+                                        (loop for m = (dequeue control-mailbox)
+                                              while m
+                                              do (funcall m))))
+         (iolib:set-io-handler event-base
+                               (iolib:socket-os-fd socket)
+                               :read (let ((true-handler (make-listener-handler
+                                                          server
+                                                          socket)))
+                                       (lambda (&rest rest)
+                                          (lg "There is something to read on fd ~A~%" (first rest))
+                                          (apply true-handler rest))))
+         (handler-case
+             (event-dispatch event-base)
+           ;; ... handle errors
+           )
+         )
+    (loop :for v :in (server-list-clients server)
+          :do
+             (lg "cleanup up dropping client ~s~%" v)
+             (client-enqueue-read v (list v :dropped))
+             (client-disconnect v :abort t))
+    (close event-base)
+    (close-eventfd control-fd)))
+
+(defun run-server (port &key (addr +ipv4-unspecified+) resources server-name)
   "Starts a server on the given PORT and blocks until the server is
 closed.  Intended to run in a dedicated thread (the current one),
 dubbed the Server Thread.
@@ -77,75 +119,33 @@ are thread-safe.
 "
   (let* ((event-base (make-instance 'iolib:event-base))
          (server (make-instance 'server
+                                :name (format nil "WS Server \"~a\", port: ~a" server-name port)
                                 :event-base event-base))
-         (temp (make-array-ubyte8 16))
          (control-mailbox (make-queue :name "server-control"))
-         (wake-up (make-array-ubyte8 1 :initial-element 0)))
+         (control-fd (new-eventfd)))
     ;; To be clear, there are three sockets used for a server.  The
     ;; main one is the WebSockets server (socket).  There is also a
     ;; pair of connected sockets (control-socket-1 control-socket-2)
     ;; used merely as a means of making the server thread execute a
     ;; lambda from a different thread.
-    (multiple-value-bind (control-socket-1 control-socket-2)
-        (make-socket-pair)
-      (flet ((execute-in-server-thread (thunk)
-               ;; hook for waking up the server and telling it to run
-               ;; some code, for things like enabling writers when
-               ;; there is new data to write
-               (enqueue thunk control-mailbox)
-               (if *debug-on-server-errors*
-                   (iolib:send-to control-socket-2 wake-up)
-                   (ignore-errors
-                    (iolib:send-to control-socket-2 wake-up)))))
-        (unwind-protect
-             (iolib:with-open-socket (socket :connect :passive
-                                             :address-family :internet
-                                             :type :stream
-                                             :ipv6 nil
-                                             ;;:external-format '(unsigned-byte 8)
-                                             ;; bind and listen as well
-                                             :local-host addr
-                                             :local-port port
-                                             :backlog 5
-                                             :reuse-address t
-                                             #++ :no-delay)
-               (iolib:set-io-handler event-base
-                                     (socket-os-fd control-socket-1)
-                                     :read (lambda (fd e ex)
-                                              (declare (ignorable fd e ex))
-                                              (receive-from control-socket-1
-                                                            :buffer temp
-                                                            :start 0 :end 16)
-                                              (loop for m = (dequeue control-mailbox)
-                                                    while m
-                                                    do (funcall m))))
-               (iolib:set-io-handler event-base
-                                     (iolib:socket-os-fd socket)
-                                     :read (let ((true-handler (make-listener-handler
-                                                                server
-                                                                socket
-                                                                #'execute-in-server-thread)))
-                                             (lambda (&rest rest)
-                                                (lg "There is something to read on fd ~A~%" (first rest))
-                                                (apply true-handler rest))))
-               (handler-case
-                   (event-dispatch event-base)
-                 ;; ... handle errors
-                 )
-               )
-          (loop :for v :in (server-list-clients server)
-                :do
-                   (lg "cleanup up dropping client ~s~%" v)
-                   (client-enqueue-read v (list v :dropped))
-                   (client-disconnect v :abort t))
-          (close control-socket-1)
-          (close control-socket-2))))))
+    (flet ((execute-in-server-thread (thunk)
+             ;; hook for waking up the server and telling it to run
+             ;; some code, for things like enabling writers when
+             ;; there is new data to write
+             (enqueue thunk control-mailbox)
+             (lg "Notifying server thread")
+             (if *debug-on-server-errors*
+                 (eventfd.notify-1 control-fd)
+                 (ignore-errors
+                  (eventfd.notify-1 control-fd)))))
+      (setf (slot-value server 'execute-in-server-lambda) #'execute-in-server-thread)
+      (if resources
+          (setf (slot-value server 'resources) resources))
+      (setup-server server addr port event-base control-fd control-mailbox))))
 
 
 (defun run-server-thread (server-name port &key (addr +ipv4-unspecified+) resources)
-  "Starts a server on the given PORT and blocks until the server is
-closed.  Intended to run in a dedicated thread,
-dubbed the Server Thread.
+  "Starts a server on the given PORT in new Thread.
 
 Establishes a socket listener in the current thread.  This thread
 handles all incoming connections, and because of this fact is able to
@@ -161,78 +161,30 @@ Returns execute-in-server-thread lambda
          (server (make-instance 'server
                                 :name (format nil "WS Server \"~a\", port: ~a" server-name port)
                                 :event-base event-base))
-         (temp (make-array-ubyte8 16))
          (control-mailbox (make-queue :name "server-control"))
-         (wake-up (make-array-ubyte8 1 :initial-element 0)))
+         (control-fd (new-eventfd))) ;; TODO: add error checking here
     ;; To be clear, there are three sockets used for a server.  The
     ;; main one is the WebSockets server (socket).  There is also a
     ;; pair of connected sockets (control-socket-1 control-socket-2)
     ;; used merely as a means of making the server thread execute a
     ;; lambda from a different thread.
-    (multiple-value-bind (control-socket-1 control-socket-2)
-        (make-socket-pair)
-      (flet ((execute-in-server-thread (thunk)
-               ;; hook for waking up the server and telling it to run
-               ;; some code, for things like enabling writers when
-               ;; there is new data to write
-               (enqueue thunk control-mailbox)
-               (if *debug-on-server-errors*
-                   (iolib:send-to control-socket-2 wake-up)
-                   (ignore-errors
-                    (iolib:send-to control-socket-2 wake-up)))))
-        (setf (slot-value server 'execute-in-server-lambda) #'execute-in-server-thread)
-        (if resources
-            (setf (slot-value server 'resources) resources))
-        (bt:make-thread
-         (lambda ()
-            (unwind-protect
-                 (iolib:with-open-socket (socket :connect :passive
-                                                 :address-family :internet
-                                                 :type :stream
-                                                 :ipv6 nil
-                                                 ;;:external-format '(unsigned-byte 8)
-                                                 ;; bind and listen as well
-                                                 :local-host addr
-                                                 :local-port port
-                                                 :backlog 5
-                                                 :reuse-address t
-                                                 #++ :no-delay)
-                   (iolib:set-io-handler event-base
-                                         (socket-os-fd control-socket-1)
-                                         :read (lambda (fd e ex)
-                                                  (declare (ignorable fd e ex))
-                                                  (receive-from control-socket-1
-                                                                :buffer temp
-                                                                :start 0 :end 16)
-                                                  (loop for m = (dequeue control-mailbox)
-                                                        while m
-                                                        do (funcall m))))
-                   (iolib:set-io-handler event-base
-                                         (iolib:socket-os-fd socket)
-                                         :read (let ((true-handler (make-listener-handler
-                                                                    server
-                                                                    socket
-                                                                    #'execute-in-server-thread)))
-                                                 (lambda (&rest rest)
-                                                    (lg "There is something to read on fd ~A~%" (first rest))
-                                                    (apply true-handler rest))))
-                   (handler-case
-                       (event-dispatch event-base)
-                     ;; ... handle errors
-                     )
-                   )
-              (lg "~a terminates now..." (server-name server))
-              (loop :for v :in (server-list-clients server)
-                    :do
-                       (lg "cleanup up dropping client ~s~%" v)
-                       (client-enqueue-read v (list v :dropped))
-                       (client-disconnect v :abort t))
-              (close control-socket-1)
-              (close control-socket-2)
-              (close event-base)))
-         :name (server-name server))
-        server
-        ))))
+    (flet ((execute-in-server-thread (thunk)
+             ;; hook for waking up the server and telling it to run
+             ;; some code, for things like enabling writers when
+             ;; there is new data to write
+             (enqueue thunk control-mailbox)
+             (if *debug-on-server-errors*
+                 (eventfd.notify-1 control-fd)
+                 (ignore-errors
+                  (eventfd.notify-1 control-fd)))))
+      (setf (slot-value server 'execute-in-server-lambda) #'execute-in-server-thread)
+      (if resources
+          (setf (slot-value server 'resources) resources))
+      (bt:make-thread
+       (lambda ()
+          (setup-server server addr port event-base control-fd control-mailbox))
+       :name (server-name server))
+      server)))
 
 
 (defun stop-server (server)
