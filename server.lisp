@@ -49,9 +49,6 @@ connections and has a bunch of client instances that it controls."))
          (lg "got client connection from ~s ~s~%" (client-host client)
              (client-port client))
          (lg "client count = ~s/~s~%" (server-client-count server) *max-clients*)
-         ;; fixme: probably shouldn't do this if we are dropping the connection
-         ;; due to too many connections?
-         (setf (gethash client (server-clients server)) client)
          (cond
            ((and *max-clients* (> (server-client-count server) *max-clients*))
             ;; too many clients, send a server busy response and close connection
@@ -60,6 +57,7 @@ connections and has a bunch of client instances that it controls."))
             (client-enqueue-write client :close))
            (t
             ;; otherwise handle normally
+            (setf (gethash client (server-clients server)) client)
             (add-reader-to-client client)))))))
 
 (defun setup-server (server addr port event-base control-fd control-mailbox)
