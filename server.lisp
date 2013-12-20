@@ -79,7 +79,7 @@ connections and has a bunch of client instances that it controls."))
                                control-fd
                                :read (lambda (fd e ex)
                                         (declare (ignorable fd e ex))
-                                        (lg "Got lambda to execute on server thread ~a" (eventfd.read control-fd))
+                                        (lg "Got lambda to execute on server thread ~a~%" (eventfd.read control-fd))
                                         (loop for m = (dequeue control-mailbox)
                                               while m
                                               do (funcall m))))
