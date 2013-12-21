@@ -120,12 +120,7 @@ are thread-safe.
                                 :name (format nil "WS Server \"~a\", port: ~a" server-name port)
                                 :event-base event-base))
          (control-mailbox (make-queue :name "server-control"))
-         (control-fd (new-eventfd)))
-    ;; To be clear, there are three sockets used for a server.  The
-    ;; main one is the WebSockets server (socket).  There is also a
-    ;; pair of connected sockets (control-socket-1 control-socket-2)
-    ;; used merely as a means of making the server thread execute a
-    ;; lambda from a different thread.
+         (control-fd (new-eventfd)))  ;; TODO: add error checking here
     (flet ((execute-in-server-thread (thunk)
              ;; hook for waking up the server and telling it to run
              ;; some code, for things like enabling writers when
@@ -161,11 +156,6 @@ Returns execute-in-server-thread lambda
                                 :event-base event-base))
          (control-mailbox (make-queue :name "server-control"))
          (control-fd (new-eventfd))) ;; TODO: add error checking here
-    ;; To be clear, there are three sockets used for a server.  The
-    ;; main one is the WebSockets server (socket).  There is also a
-    ;; pair of connected sockets (control-socket-1 control-socket-2)
-    ;; used merely as a means of making the server thread execute a
-    ;; lambda from a different thread.
     (flet ((execute-in-server-thread (thunk)
              ;; hook for waking up the server and telling it to run
              ;; some code, for things like enabling writers when
