@@ -2,6 +2,7 @@
   (:use #:cl #:iolib)
   (:export
    ;; client
+   #:client
    #:write-to-client-text
    #:write-to-client-binary
    #:write-to-clients-text
@@ -52,6 +53,7 @@
    #:origin-prefix
    #:any-origin
    #:origin-exact
+   #:server-client-class
 
 #:*log-level*))
    
