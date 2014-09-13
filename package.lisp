@@ -40,6 +40,7 @@
    #:send-custom-message-to-resource
    #:call-on-resource-thread
    ;; server
+   #:server
    #:run-server
    #:run-server-thread
    #:stop-server
