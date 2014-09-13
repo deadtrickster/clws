@@ -108,8 +108,7 @@ connections and has a bunch of client instances that it controls."))
            (handler-case
                (event-dispatch event-base)
              ;; ... handle errors
-             )
-           )
+             ))
       (loop :for v :in (server-list-clients server)
             :do
                (lg "cleanup up dropping client ~s~%" v)
