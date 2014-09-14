@@ -35,8 +35,13 @@ Then we can start the websockets server, here we use port 12345:
 
 ```lisp
 (bordeaux-threads:make-thread (lambda ()
-                                (run-server 12345))
+                                (run-server (make-instance 'server :port 12345 :name "websockets server"))
                               :name "websockets server")
+```
+or
+```lisp
+(run-server-thread 
+  (make-instance 'server :port 12345 :name "websockets server"))
 ```
 
 Next we need to define a 'resource', which we will call `/echo` (so we will connect with URIs like `ws://localhost/echo`). To do that, we subclass `ws-resource` and specialize a few generic functions on that class:
