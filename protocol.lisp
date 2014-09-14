@@ -207,7 +207,7 @@ Sec-WebSocket-Version: ~{~s~^, ~}
    (lambda (x)
      (let ((headers (with-buffer-as-stream (x s)
                       (chunga:read-http-headers s))))
-       (setf (client-connection-headers client) (alexandria:alist-hash-table headers))
+       (setf (client-connection-headers client) (ia-hash-table:alist-ia-hash-table headers))
        (dispatch-protocols client)))))
 
 
