@@ -40,6 +40,8 @@ to be buffered indefinitely though, so be careful with large settings.")
 (defvar *debug-on-resource-errors* nil
   "set to T to enter debugger on resource-handler errors, NIL to drop the connections and try to send a disconnect to handler.")
 
+(defvar *resource-handler-error-close-code* 3500
+  "Code to be used in CLOSE frame when connection is closed because of resource handler error")
 
 (defvar *400-message* (string-to-shareable-octets
                              "HTTP/1.1 400 Bad Request

@@ -214,7 +214,7 @@ RESOURCE-CLIENT-DISCONNECTED and RESOURCE-RECEIVED-FRAME as appropriate."
                   (ignore-errors (disconnect-client client)))
                 ;; none of the defined status codes in draft 14 seem right for
                 ;; 'server error'
-                (ignore-errors (write-to-client-close client :code nil))
+                (ignore-errors (write-to-client-close client :code *resource-handler-error-close-code*))
                 (setf (client-connection-rejected client) t))
               (drop-message () #|| do nothing ||#)))))
     (loop :for (client data) = (mailbox-receive-message (slot-value resource 'read-queue))
