@@ -53,9 +53,7 @@
    #:origin-prefix
    #:any-origin
    #:origin-exact
-   #:server-client-class
-
-#:*log-level*))
+   #:server-client-class))
    
 (in-package :clws)
 

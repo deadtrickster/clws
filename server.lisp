@@ -59,9 +59,9 @@ connections and has a bunch of client instances that it controls."))
                                      :server-hook (slot-value server 'execute-in-server-lambda)
                                      :socket client-socket))))
        (when client
-         (lg "got client connection from ~s ~s~%" (client-host client)
+         (log:debug "got client connection from ~s ~s~%" (client-host client)
              (client-port client))
-         (lg "client count = ~s/~s~%" (server-client-count server) *max-clients*)
+         (log:debug "client count = ~s/~s~%" (server-client-count server) *max-clients*)
          (cond
            ((and *max-clients* (> (server-client-count server) *max-clients*))
             ;; too many clients, send a server busy response and close connection
@@ -93,7 +93,7 @@ connections and has a bunch of client instances that it controls."))
                                  control-fd
                                  :read (lambda (fd e ex)
                                           (declare (ignorable fd e ex))
-                                          (lg "Got lambda to execute on server thread ~a~%" (eventfd.read control-fd))
+                                          (log:debug "Got lambda to execute on server thread ~a" (eventfd.read control-fd))
                                           (loop for m = (dequeue control-mailbox)
                                                 while m
                                                 do (funcall m))))
@@ -103,7 +103,7 @@ connections and has a bunch of client instances that it controls."))
                                                             server
                                                             socket)))
                                          (lambda (&rest rest)
-                                            (lg "There is something to read on fd ~A~%" (first rest))
+                                            (log:debug "There is something to read on fd ~A" (first rest))
                                             (apply true-handler rest))))
            (handler-case
                (event-dispatch event-base)
@@ -111,7 +111,7 @@ connections and has a bunch of client instances that it controls."))
              ))
       (loop :for v :in (server-list-clients server)
             :do
-               (lg "cleanup up dropping client ~s~%" v)
+               (log:debug "cleanup up dropping client ~s" v)
                (client-enqueue-read v (list v :dropped))
                (client-disconnect v :abort t))
       (close event-base)
@@ -126,7 +126,7 @@ connections and has a bunch of client instances that it controls."))
               ;; some code, for things like enabling writers when
               ;; there is new data to write
               (enqueue thunk control-mailbox)
-              (lg "Notifying server thread")
+              (log:debug "Notifying server thread")
               (if *debug-on-server-errors*
                   (eventfd.notify-1 control-fd)
                   (ignore-errors
@@ -147,10 +147,14 @@ spawned off a new thread for each connection.  As such, most of the
 processing is done on the Server Thread, though most user functions
 are thread-safe.
 
-"
+"  
+  (log:info "CLWS ~a" (server-name server))
   (setup-execute-in-server-lambda server)
+  (log:info "Starting server resources")
   (run-server-resources server)
+  (log:info "Starting global resources")
   (run-global-resources)
+  (log:info "Starting server")
   (run-server% server)
   server)
 
@@ -166,8 +170,8 @@ Return SERVER"
 
 
 (defun stop-server (server)
-  (lg "Killing resources~%")
+  (log:info "Killing resources~%")
   (kill-all-server-resource-listeners server)
-  (lg "Stopping Server Thread~%")
+  (log:info "Stopping Server Thread~%")
   (funcall (execute-in-server-lambda server) (lambda ()
                                                 (sb-thread:abort-thread))))

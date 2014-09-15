@@ -205,7 +205,7 @@ RESOURCE-CLIENT-DISCONNECTED and RESOURCE-RECEIVED-FRAME as appropriate."
                      (*debug-on-resource-errors*
                       (invoke-debugger c))
                      (t
-                      (lg "resource handler error ~s, dropping client~%" c)
+                      (log:debug "resource handler error ~s, dropping client" c)
                       (invoke-restart 'drop-client))))))
             (restart-case
                 (progn ,@body)
@@ -232,7 +232,7 @@ RESOURCE-CLIENT-DISCONNECTED and RESOURCE-RECEIVED-FRAME as appropriate."
                         (*debug-on-resource-errors*
                          (invoke-debugger c))
                         (t
-                         (lg "resource handler error ~s in custom, ignoring~%" c)
+                         (log:debug "resource handler error ~s in custom, ignoring" c)
                          (invoke-restart 'continue))))))
               (let ((message client))
                 (restart-case

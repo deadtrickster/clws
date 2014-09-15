@@ -107,7 +107,7 @@ client.  Once a read handler is set up, the client can handle the
 handshake coming in from the client."))
 
 (defmethod client-enable-handler ((client client) &key read write error)
-  (lg "enable handlers for ~s:~s ~s ~s ~s~%"
+  (log:debug "enable handlers for ~s:~s read:~s write:~s error:~s"
       (client-host client) (client-port client) read write error)
   (when (and (not (client-socket-closed client))
              (socket-os-fd (client-socket client)))
@@ -117,7 +117,7 @@ handshake coming in from the client."))
                  (not (client-writer-active client))
                  (not (client-write-closed client)))
         (try-write-client client))
-      (when read (lg "enable read ~s ~s ~s~%"
+      (when read (log:debug "enable read ~s ~s ~s"
                      fd
                      (client-reader-active client)
                      (client-read-closed client)))
@@ -137,13 +137,13 @@ handshake coming in from the client."))
 the given client object. "))
 
 (defmethod client-disable-handler ((client client) &key read write error)
-  (lg "disable handlers for ~s:~s ~s ~s ~s~%"
+  (log:debug "disable handlers for ~s:~s read:~s write:~s error:~s"
       (client-host client) (client-port client) read write error)
   (let ((fd (socket-os-fd (client-socket client))))
     (when (and write (client-writer-active client))
       (iolib:remove-fd-handlers (server-event-base (client-server client)) fd :write t))
 
-    (when read (lg "disable read ~s ~s ~s~%"
+    (when read (log:debug "disable read ~s ~s ~s"
                    fd
                    (client-reader-active client)
                    (client-read-closed client)))
@@ -161,21 +161,21 @@ if both sides shutdown"))
 (defmethod client-disconnect ((client client) &key read write close abort)
   "shutdown 1 or both sides of a connection, close it if both sides shutdown"
   (declare (optimize (debug 3)))
-  (lg "disconnect for ~s:~s ~s ~s / ~s ~s~%"
+  (log:debug "disconnect for ~s:~s read:~s write:~s / close:~s abort:~s"
       (client-host client) (client-port client) read write close abort)
   (unless (client-socket-closed client)
     (macrolet ((ignore-some-errors (&body body)
                  `(handler-case
                       (progn ,@body)
                     (socket-not-connected-error ()
-                      (lg "enotconn ~s ~s ~s~%" ,(format nil "~s" body)
+                      (log:debug "enotconn ~s ~s ~s" ,(format nil "~s" body)
                           (client-port client) fd)
                       nil)
                     (isys:epipe ()
-                      (lg "epipe in disconnect~%")
+                      (log:debug "epipe in disconnect")
                       nil)
                     (isys:enotconn ()
-                      (lg "enotconn in shutdown/close?")
+                      (log:debug "enotconn in shutdown/close?")
                       nil))))
       (let* ((socket (client-socket client))
              (fd (socket-os-fd socket)))
@@ -205,7 +205,7 @@ if both sides shutdown"))
   (let ((resource (client-resource client)))
     (when (and resource
                (or close abort (client-read-closed client)))
-      (lg "disconnect client from resource ~s:~s~%"
+      (log:debug "disconnect client from resource ~s:~s"
           (client-host client) (client-port client))
       ;; should this clear client-resource too?
       (resource-client-disconnected resource client)
@@ -220,10 +220,10 @@ if both sides shutdown"))
                  (and (client-read-closed client)
                       (client-write-closed client)))
              (not (client-socket-closed client)))
-    (lg "removing client ~s (closed already? ~A)~%" (client-port client) (client-socket-closed client))
+    (log:debug "removing client ~s (closed already? ~A)" (client-port client) (client-socket-closed client))
     (setf (client-socket-closed client) t)
     (remhash client (server-clients (client-server client))))
-  (lg "<<finish disconnect for ~s:~s ~s ~s / ~s ~s~%"
+  (log:debug "<<finish disconnect for ~s:~s read:~s write:~s / close:~s abort:~s"
       (client-host client) (client-port client) read write close abort))
 
 

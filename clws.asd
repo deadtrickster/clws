@@ -14,7 +14,8 @@
                "cl-base64" ; for o7 hanshake
                "flexi-streams"
                "split-sequence"
-               "ia-hash-table")
+               "ia-hash-table"
+               "log4cl")
   :serial t
   :components ((:file "package")
                #+sbcl(:file "sb-concurrency-patch")

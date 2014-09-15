@@ -31,12 +31,6 @@ http://www.adobe.com/devnet/articles/crossdomain_policy_file_spec.html"
            (code-char 0))
    :encoding :ascii))
 
-(defun lg (&rest args)
-  (declare (special *log-level*))
-  (when *log-level*
-    (apply #'format t args)
-    (finish-output)))
-
 (defmacro make-array-ubyte8 (size &key (initial-element nil initial-element-p)
                                     (initial-contents nil initial-contents-p))
   (let ((body `(make-array ,size :element-type '(unsigned-byte 8)
