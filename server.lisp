@@ -65,6 +65,7 @@ connections and has a bunch of client instances that it controls."))
          (cond
            ((and *max-clients* (> (server-client-count server) *max-clients*))
             ;; too many clients, send a server busy response and close connection
+            (log:info "Too many clients ~s:~s, sending busy response" (server-client-count server) *max-clients*)
             (client-disconnect client :read t)
             (client-enqueue-write client *server-busy-message*)
             (client-enqueue-write client :close))

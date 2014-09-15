@@ -259,7 +259,7 @@
                         (invoke-debugger c))
                        (t
                         (ignore-errors
-                         (lg "server error ~s, dropping connection~%" c))
+                         (log:error "server error ~s, dropping connection" c))
                         (invoke-restart 'drop-connection))))))
               (restart-case
                   (handler-case
@@ -307,7 +307,7 @@
                                                       :message (status-message e)))
                       (setf (client-connection-state client) :failed)
                       (client-enqueue-read client (list client :eof))
-                      (lg "failed connection ~s / ~s : ~s ~s~%"
+                      (log:error "failed connection ~s / ~s : ~s ~s"
                           (client-host client) (client-port client)
                           (status-code e) (status-message e))
                       (client-disconnect client :read t
@@ -315,7 +315,7 @@
                     (close-from-peer (e)
                       (when (eq (client-connection-state client) :connected)
                         (write-to-client-close client))
-                      (lg "got close frame from peer: ~s / ~s~%"
+                      (log:error "got close frame from peer: ~s / ~s"
                           (status-code e) (status-message e))
                       (setf (client-connection-state client) :cloed)
                       ;; probably should send code/message to resource handlers?
@@ -325,13 +325,13 @@
                     ;; close connection on socket/read errors
                     (end-of-file ()
                       (client-enqueue-read client (list client :eof))
-                      (lg "closed connection ~s / ~s~%" (client-host client)
+                      (log:error "closed connection ~s / ~s" (client-host client)
                           (client-port client))
                       (client-disconnect client :read t
                                                 :write t))
                     (socket-connection-reset-error ()
                       (client-enqueue-read client (list client :eof))
-                      (lg "connection reset by peer ~s / ~s~%"
+                      (log:error "connection reset by peer ~s / ~s"
                           (client-host client)
                           (client-port client))
                       (client-disconnect client :read t))

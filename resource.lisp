@@ -205,7 +205,7 @@ RESOURCE-CLIENT-DISCONNECTED and RESOURCE-RECEIVED-FRAME as appropriate."
                      (*debug-on-resource-errors*
                       (invoke-debugger c))
                      (t
-                      (log:debug "resource handler error ~s, dropping client" c)
+                      (log:error "resource handler error ~s, dropping client" c)
                       (invoke-restart 'drop-client))))))
             (restart-case
                 (progn ,@body)
@@ -232,7 +232,7 @@ RESOURCE-CLIENT-DISCONNECTED and RESOURCE-RECEIVED-FRAME as appropriate."
                         (*debug-on-resource-errors*
                          (invoke-debugger c))
                         (t
-                         (log:debug "resource handler error ~s in custom, ignoring" c)
+                         (log:error "resource handler error ~s in custom, ignoring" c)
                          (invoke-restart 'continue))))))
               (let ((message client))
                 (restart-case
@@ -259,6 +259,7 @@ RESOURCE-CLIENT-DISCONNECTED and RESOURCE-RECEIVED-FRAME as appropriate."
             ((eql data :flow-control)
              (%write-to-client client :enable-read))
             ((symbolp data)
+             (log:fatal "Unknown symbol in read-queue of resource: ~S " data)
              (error "Unknown symbol in read-queue of resource: ~S " data))
             ((consp data)
              (restarts
@@ -266,7 +267,8 @@ RESOURCE-CLIENT-DISCONNECTED and RESOURCE-RECEIVED-FRAME as appropriate."
                   (resource-received-text resource client (cadr data))
                   (resource-received-binary resource client (cadr data)))))
             (t
-             (error "got unknown data in run-resource-listener?"))))))
+             (log:fatal "Got unknown data in run-resource-listener?" data)
+             (error "Got unknown data in run-resource-listener?"))))))
 
 (defun maybe-run-resource-listener-thread (name resource)
   "Runs resource listener in new thread if resource does not have one (or it is not alive), else does nothing"
