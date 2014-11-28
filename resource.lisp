@@ -205,7 +205,7 @@ RESOURCE-CLIENT-DISCONNECTED and RESOURCE-RECEIVED-FRAME as appropriate."
                      (*debug-on-resource-errors*
                       (invoke-debugger c))
                      (t
-                      (log:error "resource handler error ~s, dropping client" c)
+                      (log:error "resource handler error ~s ~a, dropping client" c (trivial-backtrace:print-backtrace c :output nil :just-backtrace t))
                       (invoke-restart 'drop-client))))))
             (restart-case
                 (progn ,@body)
@@ -267,7 +267,7 @@ RESOURCE-CLIENT-DISCONNECTED and RESOURCE-RECEIVED-FRAME as appropriate."
                   (resource-received-text resource client (cadr data))
                   (resource-received-binary resource client (cadr data)))))
             (t
-             (log:fatal "Got unknown data in run-resource-listener?" data)
+             (log:fatal "Got unknown data ~A in run-resource-listener?" data)
              (error "Got unknown data in run-resource-listener?"))))))
 
 (defun maybe-run-resource-listener-thread (name resource)
