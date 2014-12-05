@@ -259,7 +259,7 @@
                         (invoke-debugger c))
                        (t
                         (ignore-errors
-                         (log:error "server error ~s, dropping connection" c))
+                         (log:error "server error ~a ~a, dropping connection" c (trivial-backtrace:print-backtrace c :output nil :just-backtrace t)))
                         (invoke-restart 'drop-connection))))))
               (restart-case
                   (handler-case
