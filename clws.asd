@@ -15,7 +15,8 @@
                "flexi-streams"
                "split-sequence"
                "ia-hash-table"
-               "log4cl")
+               "log4cl"
+               "trivial-backtrace")
   :serial t
   :components ((:file "package")
                #+sbcl(:file "sb-concurrency-patch")
