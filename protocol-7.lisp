@@ -43,7 +43,7 @@ Test this with the example provided in the above document:
       ;; to 16 octets, and Sec-Websocket-Version = 7
       ;; also need Connection: Upgrade and Upgrade: WebSocket
       ;; (ff sends Connection: keep-alive, Upgrade, so split on , first)
-      (unless (and host key version (and (string= version version-string))
+      (unless (and host key version (and (= version version-string))
                    (string-equal upgrade "websocket")
                    (member "Upgrade" connection :test 'string-equal))
         (error-exit *400-message*))
@@ -277,29 +277,29 @@ Sec-WebSocket-Accept: ~a
             (protocol-7+-read-frame client length nil))))))))
 
 (defun protocol-7-parse-headers (client)
-  (when (protocol-7+-handshake client "7" :sec-websocket-origin)
+  (when (protocol-7+-handshake client 7 :sec-websocket-origin)
     (setf (client-websocket-version client) 7)
     (setf (client-connection-state client) :connected)
     (client-enqueue-read client (list client :connect))
     (protocol-7+-start-frame client)))
 
 (defun protocol-8-parse-headers (client)
-  (when (protocol-7+-handshake client "8" :sec-websocket-origin)
+  (when (protocol-7+-handshake client 8 :sec-websocket-origin)
     (setf (client-websocket-version client) 8)
     (setf (client-connection-state client) :connected)
     (client-enqueue-read client (list client :connect))
     (protocol-7+-start-frame client)))
 
 (defun protocol-13-parse-headers (client)
-  (when (protocol-7+-handshake client "13" :origin)
+  (when (protocol-7+-handshake client 13 :origin)
     (setf (client-websocket-version client) 8)
     (setf (client-connection-state client) :connected)
     (client-enqueue-read client (list client :connect))
     (protocol-7+-start-frame client)))
 
-(setf (gethash "7" *protocol-header-parsers*) 'protocol-7-parse-headers
-      (gethash "8" *protocol-header-parsers*) 'protocol-8-parse-headers
-      (gethash "13" *protocol-header-parsers*) 'protocol-13-parse-headers)
+(setf (gethash 7 *protocol-header-parsers*) 'protocol-7-parse-headers
+      (gethash 8 *protocol-header-parsers*) 'protocol-8-parse-headers
+      (gethash 13 *protocol-header-parsers*) 'protocol-13-parse-headers)
 
 (push 7 *supported-protocol-versions*)
 (push 8 *supported-protocol-versions*)

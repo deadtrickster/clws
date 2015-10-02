@@ -8,6 +8,8 @@
 (defsystem :clws
   :depends-on ("safe-queue"
                "iolib"
+               "fast-http"
+               "quri"
                "eventfd"
                "ironclad"
                "chunga"     ; for o7 hanshake
@@ -29,6 +31,7 @@
                (:file "protocol-00")
                (:file "protocol-7")
                (:file "protocol")
+               (:file "http")
                (:file "client")
                (:file "server")
                (:file "resource"))

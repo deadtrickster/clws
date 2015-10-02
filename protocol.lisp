@@ -61,6 +61,7 @@
   ;; 14 suggests 400
   ;; and all 3 put list of supported versions in sec-websocket-version header
   ;; when we get one we don't recognize, so do that then close the connection
+  (log:debug "Unsupported Protocol version")
   (client-enqueue-write
    client
    (string-to-shareable-octets
@@ -83,57 +84,6 @@ Sec-WebSocket-Version: ~{~s~^, ~}
 (defun invalid-header (client)
   ;; just sending same error as unknown version for now...
   (unsupported-protocol-version client))
-
-(defun match-resource-line (buffer)
-  (next-reader-state
-   buffer
-   (octet-pattern-matcher #(13 10))
-   (alexandria:named-lambda resource-line-callback (x)
-     (let ((request-line
-             ;; fixme: process the buffers directly rather than this
-             ;; complicated mess of nested streams and loop and coerce
-             (with-buffer-as-stream (x s)
-               (with-open-stream
-                   (s (flex:make-flexi-stream s))
-                 (string-right-trim '(#\space #\return #\newline)
-                                    (read-line s nil ""))))))
-       (unless (every (lambda (c) (<= 32 (char-code c) 126)) request-line)
-         (return-from resource-line-callback
-           (invalid-header buffer)))
-       (let ((s1 (position #\space request-line))
-             (s2 (position #\space request-line :from-end t)))
-         (unless (and s1 s2 (> s2 (1+ s1))
-                      (string= "GET " request-line :end2 (1+ s1))
-                      ;; fixme: spec says "HTTP/1.1 or higher"
-                      ;; ignoring that possibilty for now..
-                      (string= " HTTP/1.1" request-line :start2 s2))
-           (log:debug "got bad request line? ~s" request-line)
-           (return-from resource-line-callback
-             (invalid-header buffer)))
-         (let* ((uri (subseq request-line (1+ s1) s2))
-                (? (position #\? uri :from-end t))
-                (query (when ? (subseq uri (1+ ?))))
-                (\:// (search "://" uri))
-                (scheme (when \:// (string-downcase (subseq uri 0 \://))))
-                (c/ (when (and scheme (> (length uri) (+ \:// 3)))
-                      (position #\/ uri :start  (+ \:// 3))))
-                (resource-name (if (or c/ ?)
-                                   (subseq uri (or c/ 0) ?)
-                                   uri)))
-           ;; websocket URIs must either start with / or
-           ;; ws://.../ or wss://.../, and can't contain #
-           ;; ... except draft 11-14 says "HTTP/HTTPS URI"?
-           (unless (or (char= (char uri 0) #\/)
-                       (string= scheme "ws")
-                       (string= scheme "wss")
-                       (not (position #\# uri)))
-             (return-from resource-line-callback
-               (invalid-header buffer)))
-           ;; fixme: decode %xx junk in url/query string?
-           (log:debug "got request line ~s ? ~s" resource-name query)
-           (setf (client-resource-name buffer) resource-name)
-           (setf (client-query-string buffer) query))))
-     (match-headers buffer))))
 
 ;;; websockets emulation using flash needs to be able to read a
 ;;; flash 'policy file' to connect
@@ -165,7 +115,8 @@ Sec-WebSocket-Version: ~{~s~^, ~}
                      (lambda (buffer)
                        (if (eql (peek-octet (chunks buffer)) (char-code #\<))
                            (match-policy-file buffer)
-                           (match-resource-line buffer)))))
+                           (let ((parser (make-http-request-parser)))
+                             (match-resource-line buffer parser))))))
 
 (defun ignore-remaining-input (client)
   ;; just accept any input and junk it, for use when no more input expected
@@ -199,16 +150,6 @@ Sec-WebSocket-Version: ~{~s~^, ~}
        (log:debug "couldn't detect version? headers=~s"
            (alexandria:hash-table-alist headers))
        (invalid-header client)))))
-
-
-(defun match-headers (client)
-  (next-reader-state
-   client (octet-pattern-matcher #(13 10 13 10))
-   (lambda (x)
-     (let ((headers (with-buffer-as-stream (x s)
-                      (chunga:read-http-headers s))))
-       (setf (client-connection-headers client) (ia-hash-table:alist-ia-hash-table headers))
-       (dispatch-protocols client)))))
 
 
 ;;; fixme: these foo-for-protocol should probably be split out into
