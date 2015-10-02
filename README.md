@@ -136,6 +136,18 @@ Finally, we register the resource with the server, and start a thread to handle 
 
 * `client-connection-headers (client)`: Hash table containing any HTTP headers supplied by `client`, as a hash table of keywords (`:user-agent`, `:cookie`, etc) -> strings.
 
+## Authors
 
+* 3b (https://github.com/3b)
+* Ilya Khaprov (ilya.khaprov@publitechs.com)
+
+## Copyright
+
+Copyright (c) 2010-2013 3b <https://github.com/3b>
+Copyright (c) 2013-2015 Ilya Khaprov <ilya.khaprov@publitechs.com>
+
+## License
+
+MIT
 
 
