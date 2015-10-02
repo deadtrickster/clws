@@ -7,6 +7,7 @@ Supports [WebSocket][] draft protocols [7][],[8][], and [13][], and optionally
 [0][].
 
 Doesn't currently support `wss:` (TLS/SSL) connections, but proxying behind [stud][] or [stunnel][] should work.
+Or better just use [nginx] in front of clws.
 
 [WebSocket]: http://tools.ietf.org/html/draft-ietf-hybi-thewebsocketprotocol-15
 [hixie]: http://tools.ietf.org/html/draft-hixie-thewebsocketprotocol
@@ -16,6 +17,7 @@ Doesn't currently support `wss:` (TLS/SSL) connections, but proxying behind [stu
 [13]: http://tools.ietf.org/html/draft-ietf-hybi-thewebsocketprotocol-15
 [stud]: https://github.com/bumptech/stud
 [stunnel]: http:www.stunnel.org/
+[nginx]: http://nginx.org/en/docs/http/websocket.html
 
 
 
