@@ -315,7 +315,7 @@
                     (close-from-peer (e)
                       (when (eq (client-connection-state client) :connected)
                         (write-to-client-close client))
-                      (log:error "got close frame from peer: ~s / ~s"
+                      (log:debug "got close frame from peer: ~s / ~s"
                           (status-code e) (status-message e))
                       (setf (client-connection-state client) :cloed)
                       ;; probably should send code/message to resource handlers?
