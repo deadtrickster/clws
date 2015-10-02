@@ -9,6 +9,7 @@
   :depends-on (#+sbcl "sb-concurrency"
                #-sbcl "chanl"
                "iolib"
+               "eventfd"
                "ironclad"
                "chunga"     ; for o7 hanshake
                "cl-base64" ; for o7 hanshake
@@ -22,7 +23,6 @@
                #+sbcl(:file "sb-concurrency-patch")
                #+sbcl(:file "concurrency-sbcl")
                #-sbcl(:file "concurrency-chanl")
-               (:file "eventfd")
                (:file "util")
                (:file "config")
                (:file "buffer")

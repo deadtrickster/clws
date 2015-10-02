@@ -1,5 +1,5 @@
 (defpackage #:clws
-  (:use #:cl #:iolib)
+  (:use #:cl #:iolib #:eventfd)
   (:export
    ;; client
    #:client

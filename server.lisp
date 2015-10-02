@@ -124,11 +124,11 @@ connections and has a bunch of client instances that it controls."))
                     (client-enqueue-read v (list v :dropped))
                     (client-disconnect v :abort t))
            (close event-base)
-           (close-eventfd control-fd)))))
+           (eventfd.close control-fd)))))
 
 (defun setup-execute-in-server-lambda (server)
   (let* ((control-mailbox (make-queue :name (concatenate 'string (server-name server) " server-control")))
-         (control-fd (new-eventfd))  ;; TODO: add error checking here
+         (control-fd (eventfd.new 0))  ;; TODO: add error checking here
          (execute-in-server-thread
            (lambda (thunk)
               ;; hook for waking up the server and telling it to run
