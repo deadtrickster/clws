@@ -117,7 +117,7 @@ Finally, we register the resource with the server, and start a thread to handle 
 
 * `write-to-clients-binary (clients message &key frame-size)`: Send `message` to a list of `clients`. Same as `write-to-client-binary`, but tries to avoid repeated processing (utf-8 encoding, building frames, etc) that can be shared between clients.
 
-* `write-to-client-close (client &key (code 1000) message)`: Send a `close` message to `client`. `code` specifies the 'status code' to be send in the close message (see the [websocket spec][http://tools.ietf.org/html/draft-ietf-hybi-thewebsocketprotocol-15#section-7.4] for valid codes) defaults to 1000, indicating "normal closure".  `message` can be a short string (must utf-8 encode to < 123 octets) describing the reason for closing the connection.
+* `write-to-client-close (client &key (code 1000) message)`: Send a `close` message to `client`. `code` specifies the 'status code' to be send in the close message (see the [websocket spec](http://tools.ietf.org/html/draft-ietf-hybi-thewebsocketprotocol-15#section-7.4) for valid codes) defaults to 1000, indicating "normal closure".  `message` can be a short string (must utf-8 encode to < 123 octets) describing the reason for closing the connection.
 
 ## Getting information about connected clients  
    (most of these should be treated as read-only, and any visible `setf`
