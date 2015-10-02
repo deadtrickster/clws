@@ -144,6 +144,7 @@ Finally, we register the resource with the server, and start a thread to handle 
 ## Copyright
 
 Copyright (c) 2010-2013 3b <https://github.com/3b>
+
 Copyright (c) 2013-2015 Ilya Khaprov <ilya.khaprov@publitechs.com>
 
 ## License
