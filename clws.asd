@@ -6,8 +6,7 @@
 (in-package :clws-system)
 
 (defsystem :clws
-  :depends-on (#+sbcl "sb-concurrency"
-               #-sbcl "chanl"
+  :depends-on ("safe-queue"
                "iolib"
                "eventfd"
                "ironclad"
@@ -20,9 +19,6 @@
                "trivial-backtrace")
   :serial t
   :components ((:file "package")
-               #+sbcl(:file "sb-concurrency-patch")
-               #+sbcl(:file "concurrency-sbcl")
-               #-sbcl(:file "concurrency-chanl")
                (:file "util")
                (:file "config")
                (:file "buffer")

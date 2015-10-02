@@ -1,5 +1,5 @@
 (defpackage #:clws
-  (:use #:cl #:iolib #:eventfd)
+  (:use #:cl #:iolib #:eventfd #:safe-queue)
   (:export
    ;; client
    #:client
