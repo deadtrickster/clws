@@ -75,20 +75,23 @@
   (let* ((http-request-parser (make-instance 'http-request-parser))
          (http-request (fast-http:make-http-request))
          (parser (fast-http:make-parser http-request
-                                        :first-line-callback (lambda ()
-                                                               (setf (slot-value http-request-parser 'first-line-parsed) t))
-                                        :finish-callback (lambda ()
-                                                           (setf (slot-value http-request-parser 'finished) t)))))
-
+                                        :first-line-callback
+                                        (lambda ()
+                                          (setf (slot-value http-request-parser 'first-line-parsed) t))
+                                        :finish-callback
+                                        (lambda ()
+                                          (setf (slot-value http-request-parser 'finished) t)))))
     (setf (slot-value http-request-parser 'http-request) http-request
           (slot-value http-request-parser 'parser) parser
-          (slot-value http-request-parser 'first-line-parsed-predicate) (lambda (buffer start end)
-                                                                          (declare (ignore start))
-                                                                          (funcall parser buffer :start 0 :end end)
-                                                                          (slot-value http-request-parser 'first-line-parsed)
-                                                                          end)
-          (slot-value http-request-parser 'finish-predicate) (lambda (buffer start end)
-                                                               (funcall parser buffer :start start :end end)
-                                                               (slot-value http-request-parser 'finished)
-                                                               end))
+          (slot-value http-request-parser 'first-line-parsed-predicate)
+          (lambda (buffer start end)
+            (declare (ignore start))
+            (funcall parser buffer :start 0 :end end)
+            (slot-value http-request-parser 'first-line-parsed)
+            end)
+          (slot-value http-request-parser 'finish-predicate)
+          (lambda (buffer start end)
+            (funcall parser buffer :start start :end end)
+            (slot-value http-request-parser 'finished)
+            end))
     http-request-parser))
