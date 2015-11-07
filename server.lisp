@@ -103,11 +103,12 @@ connections and has a bunch of client instances that it controls."))
              (iolib:set-io-handler event-base
                                    control-fd
                                    :read (lambda (fd e ex)
-                                            (declare (ignorable fd e ex))
-                                            (log:debug "Got lambda to execute on server thread ~a" (eventfd.read control-fd))
-                                            (loop for m = (dequeue control-mailbox)
-                                                  while m
-                                                  do (funcall m))))
+                                           (declare (ignorable fd e ex))
+                                           (eventfd.read control-fd)
+                                           (log:debug "Got lambda to execute on server thread")
+                                           (loop for m = (dequeue control-mailbox)
+                                                 while m
+                                                 do (funcall m))))
              (iolib:set-io-handler event-base
                                    (iolib:socket-os-fd socket)
                                    :read
