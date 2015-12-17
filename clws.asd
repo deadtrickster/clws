@@ -23,18 +23,21 @@
   :author "3b <https://github.com/3b>, Ilya Khaprov <ilya.khaprov@publitechs.com>"
   :licence "MIT"
   :serial t
-  :components ((:file "package")
-               (:file "util")
-               (:file "config")
-               (:file "buffer")
-               (:file "protocol-common")
-               (:file "protocol-00")
-               (:file "protocol-7")
-               (:file "protocol")
-               (:file "http")
-               (:file "client")
-               (:file "server")
-               (:file "resource"))
+  :components ((:module "src"
+                :serial t
+                :components
+                ((:file "package")
+                 (:file "util")
+                 (:file "config")
+                 (:file "buffer")
+                 (:file "protocol-common")
+                 (:file "protocol-00")
+                 (:file "protocol-7")
+                 (:file "protocol")
+                 (:file "http")
+                 (:file "client")
+                 (:file "server")
+                 (:file "resource"))))
   :description "CLWS implement the WebSocket Protocol as described by
 RFC6455[1] (as well as some older drafts implemented by recent
 browsers [2][3][4][5]).  Only a WebSockets server implementation is
