@@ -208,10 +208,10 @@ if both sides shutdown"))
       (log:debug "disconnect client from resource ~s:~s"
           (client-host client) (client-port client))
       ;; should this clear client-resource too?
-      (resource-client-disconnected resource client)
-      (setf (client-resource client) nil)
-      (unless (client-write-closed client)
-        (%write-to-client client :close))))
+      (wait (resource-client-disconnected resource client)
+        (setf (client-resource client) nil)
+        (unless (client-write-closed client)
+          (%write-to-client client :close)))))
 
   ;; not sure if this actually needs to be separate from previous
   ;; check, need to figure out whether there can actually still be

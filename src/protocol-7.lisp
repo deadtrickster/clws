@@ -56,7 +56,7 @@ Test this with the example provided in the above document:
         (unless (funcall check-origin origin)
           (error-exit *403-message*))
 
-        (multiple-value-bind  (acceptp rqueue origin handshake-resource protocol)
+        (multiple-promise-bind (acceptp rqueue origin handshake-resource protocol)
             (resource-accept-connection resource resource-name
                                         headers
                                         client)

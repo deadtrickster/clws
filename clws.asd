@@ -18,7 +18,8 @@
                "split-sequence"
                "ia-hash-table"
                "log4cl"
-               "trivial-backtrace")
+               "trivial-backtrace"
+               "blackbird")
   :maintainer "Ilya Khaprov <ilya.khaprov@publitechs.com>"
   :author "3b <https://github.com/3b>, Ilya Khaprov <ilya.khaprov@publitechs.com>"
   :licence "MIT"

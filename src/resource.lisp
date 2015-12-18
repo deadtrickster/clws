@@ -190,8 +190,8 @@ ignore any already received data from this client."))
 
 (defun disconnect-client (client)
   (when (client-resource client)
-    (resource-client-disconnected (client-resource client) client)
-    (setf (client-resource client) nil)))
+    (wait (resource-client-disconnected (client-resource client) client)
+      (setf (client-resource client) nil))))
 
 (defun run-resource-listener (resource)
   "Runs a resource listener in its own thread indefinitely, calling
@@ -242,9 +242,10 @@ RESOURCE-CLIENT-DISCONNECTED and RESOURCE-RECEIVED-FRAME as appropriate."
              #|| ignore any further queued data from this client ||#)
             ((eql data :connect)
              (restarts
-              (when (eq :reject (resource-client-connected resource client))
-                (setf (client-connection-rejected client) t)
-                (write-to-client-close client))))
+              (alet ((res (resource-client-connected resource client)))
+                (when (eq :reject res)
+                  (setf (client-connection-rejected client) t)
+                  (write-to-client-close client)))))
             ((eql data :eof)
              (restarts
               (disconnect-client client))
