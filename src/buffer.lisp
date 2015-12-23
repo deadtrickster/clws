@@ -259,7 +259,8 @@
                         (invoke-debugger c))
                        (t
                         (ignore-errors
-                         (log:error "server error ~a ~a, dropping connection" c (trivial-backtrace:print-backtrace c :output nil :just-backtrace t)))
+                         (let ((backtrace (trivial-backtrace:print-backtrace c :output nil :just-backtrace t)))
+                           (log:error "server error ~a ~a, dropping connection" c backtrace)))
                         (invoke-restart 'drop-connection))))))
               (restart-case
                   (handler-case
@@ -334,7 +335,15 @@
                       (log:error "connection reset by peer ~s / ~s"
                           (client-host client)
                           (client-port client))
-                      (client-disconnect client :read t))
+                      (client-disconnect client :read t
+                                                :write t))
+                    (socket-connection-timeout-error ()
+                      (client-enqueue-read client (list client :eof))
+                      (log:error "connection timed out ~s / ~s"
+                          (client-host client)
+                          (client-port client))
+                      (client-disconnect client :read t
+                                                :write t))
                     ;; ... add error handlers
                     )
                 (drop-connection ()
