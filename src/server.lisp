@@ -8,7 +8,7 @@
 
 (defclass server ()
   ((name :initform nil :accessor server-name :initarg :name)
-   (addr :initform +ipv4-unspecified+ :initarg :addr :accessor server-addr)
+   (addr :initform +ipv4-loopback+ :initarg :addr :accessor server-addr)
    (port :initform nil :initarg :port :accessor server-port)
    (event-base :initform (make-instance 'iolib:event-base) :accessor server-event-base :initarg :event-base)
    (clients :initform (make-hash-table) :reader server-clients
